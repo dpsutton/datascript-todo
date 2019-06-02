@@ -25,19 +25,19 @@
   (render db)
   (persist db))
 
-;; Entity with id=0 is used for storing auxilary view information
+;; Entity with id=1 is used for storing auxilary view information
 ;; like filter value and selected group
 
 (defn set-system-attrs! [& args]
-  (d/transact! conn 
+  (d/transact! conn
     (for [[attr value] (partition 2 args)]
       (if value
-        [:db/add 0 attr value]
-        [:db.fn/retractAttribute 0 attr]))))
+        [:db/add 1 attr value]
+        [:db.fn/retractAttribute 1 attr]))))
 
 (defn system-attr
   ([db attr]
-    (get (d/entity db 0) attr))
+    (get (d/entity db 1) attr))
   ([db attr & attrs]
     (mapv #(system-attr db %) (concat [attr] attrs))))
 
@@ -76,7 +76,8 @@
 
 (defn filter-terms [db]
   (not-empty
-    (str/split (system-attr db :system/filter) #"\s+")))
+    (remove str/blank?
+            (str/split (system-attr db :system/filter) #"\s+"))))
 
 (defn filtered-db [db]
   (if-let [terms   (filter-terms db)]
@@ -139,9 +140,9 @@
     [:.group-item {:class (when (= [group item]
                                    (system-attr db :system/group :system/group-item))
                             "group-item_selected")}
-      [:span {:on-click (fn [_]
-                          (set-system-attrs! :system/group group
-                                             :system/group-item item)) }
+     [:span {:on-click (fn [_]
+                         (set-system-attrs! :system/group group
+                                            :system/group-item item))}
         title]
       (when count
         [:span.group-item-count count])]))
@@ -190,22 +191,22 @@
 
 (rum/defc todo-pane [db]
   [:.todo-pane
-    (let [todos (let [[group item] (system-attr db :system/group :system/group-item)]
-                  (todos-by-group db group item))]
-      (for [eid (sort todos)
-            :let [td (d/entity db eid)]]
-        [:.todo {:class (if (:todo/done td) "todo_done" "")}
-          [:.todo-checkbox {:on-click #(toggle-todo eid)} "✔︎"]
-          [:.todo-text (:todo/text td)]
-          [:.todo-subtext
-            (when-let [due (:todo/due td)]
-              [:span (.toDateString due)])
-            ;; here we’re using entity ref navigation, going from
-            ;; todo (td) to project to project/name
-            (when-let [project (:todo/project td)]
-              [:span (:project/name project)])
-            (for [tag (:todo/tags td)]
-              [:span tag])]]))])
+   (let [todos (let [[group item] (system-attr db :system/group :system/group-item)]
+                 (todos-by-group db group item))]
+     (for [eid (sort todos)
+           :let [td (d/entity db eid)]]
+       [:.todo {:class (if (:todo/done td) "todo_done" "")}
+        [:.todo-checkbox {:on-click #(toggle-todo eid)} "✔︎"]
+        [:.todo-text (:todo/text td)]
+        [:.todo-subtext
+         (when-let [due (:todo/due td)]
+           [:span (.toDateString due)])
+         ;; here we’re using entity ref navigation, going from
+         ;; todo (td) to project to project/name
+         (when-let [project (:todo/project td)]
+           [:span (:project/name project)])
+         (for [tag (:todo/tags td)]
+           [:span tag])]]))])
 
 (defn extract-todo []
   (when-let [text (dom/value (dom/q ".add-text"))]
@@ -242,88 +243,88 @@
 
 (rum/defc add-view []
   [:form.add-view {:on-submit (fn [_] (add-todo) false)}
-    [:input.add-text    {:type "text" :placeholder "New task"}]
-    [:input.add-project {:type "text" :placeholder "Project"}]
-    [:input.add-tags    {:type "text" :placeholder "Tags"}]
-    [:input.add-due     {:type "text" :placeholder "Due date"}]
-    [:input.add-submit  {:type "submit" :value "Add task"}]])
+   [:input.add-text    {:type "text" :placeholder "New task"}]
+   [:input.add-project {:type "text" :placeholder "Project"}]
+   [:input.add-tags    {:type "text" :placeholder "Tags"}]
+   [:input.add-due     {:type "text" :placeholder "Due date"}]
+   [:input.add-submit  {:type "submit" :value "Add task"}]])
 
 (rum/defc history-view [db]
   [:.history-view
-    (for [state @history]
-      [:.history-state 
-       { :class (when (identical? state db) "history-selected")
-         :on-click (fn [_] (reset-conn! state)) }])
-    (if-let [prev (u/find-prev @history #(identical? db %))]
-      [:button.history-btn {:on-click (fn [_] (reset-conn! prev))} "‹ undo"]
-      [:button.history-btn {:disabled true} "‹ undo"])
-    (if-let [next (u/find-next @history #(identical? db %))]
-      [:button.history-btn {:on-click (fn [_] (reset-conn! next))} "redo ›"]
-      [:button.history-btn {:disabled true} "redo ›"])])
+   (for [state @history]
+     [:.history-state
+      { :class (when (identical? state db) "history-selected")
+       :on-click (fn [_] (reset-conn! state)) }])
+   (if-let [prev (u/find-prev @history #(identical? db %))]
+     [:button.history-btn {:on-click (fn [_] (reset-conn! prev))} "‹ undo"]
+     [:button.history-btn {:disabled true} "‹ undo"])
+   (if-let [next (u/find-next @history #(identical? db %))]
+     [:button.history-btn {:on-click (fn [_] (reset-conn! next))} "redo ›"]
+     [:button.history-btn {:disabled true} "redo ›"])])
 
 (rum/defc canvas [db]
   [:.canvas
-    [:.main-view
-      (filter-pane db)
-      (let [db (filtered-db db)]
-        (list
-          (overview-pane db)
-          (todo-pane db)))]
-    (add-view)
-    (history-view db)])
+   [:.main-view
+    (filter-pane db)
+    (let [db (filtered-db db)]
+      (list
+        (overview-pane db)
+        (todo-pane db)))]
+   (add-view)
+   (history-view db)])
 
 (defn render
-  ([] (render @conn))
+  ([] (render (d/db conn)))
   ([db]
-    (profile "render"
-      (rum/mount (canvas db) js/document.body))))
+   (profile "render"
+            (rum/mount (canvas db) js/document.body))))
 
 ;; re-render on every DB change
 (d/listen! conn :render
-  (fn [tx-report]
-    (render (:db-after tx-report))))
+           (fn [tx-report]
+             (render (:db-after tx-report))))
 
 ;; logging of all transactions (prettified)
 (d/listen! conn :log
-  (fn [tx-report]
-    (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
-          datoms (:tx-data tx-report)
-          datom->str (fn [d] (str (if (:added d) "+" "−")
-                               "[" (:e d) " " (:a d) " " (pr-str (:v d)) "]"))]
-      (println
-        (str/join "\n" (concat [(str "tx " tx-id ":")] (map datom->str datoms)))))))
+           (fn [tx-report]
+             (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
+                   datoms (:tx-data tx-report)
+                   datom->str (fn [d] (str (if (:added d) "+" "−")
+                                           "[" (:e d) " " (:a d) " " (pr-str (:v d)) "]"))]
+               (println
+                 (str/join "\n" (concat [(str "tx " tx-id ":")] (map datom->str datoms)))))))
 
 ;; history
 
 (d/listen! conn :history
-  (fn [tx-report]
-    (let [{:keys [db-before db-after]} tx-report]
-      (when (and db-before db-after)
-        (swap! history (fn [h]
-          (-> h
-            (u/drop-tail #(identical? % db-before))
-            (conj db-after)
-            (u/trim-head history-limit))))))))
+           (fn [tx-report]
+             (let [{:keys [db-before db-after]} tx-report]
+               (when (and db-before db-after)
+                 (swap! history (fn [h]
+                                  (-> h
+                                      (u/drop-tail #(identical? % db-before))
+                                      (conj db-after)
+                                      (u/trim-head history-limit))))))))
 
 ;; transit serialization
 
 (defn db->string [db]
   (profile "db serialization"
-    (dt/write-transit-str db)))
+           (dt/write-transit-str db)))
 
 (defn string->db [s]
   (profile "db deserialization"
-    (dt/read-transit-str s)))
+           (dt/read-transit-str s)))
 
 ;; persisting DB between page reloads
 (defn persist [db]
   (js/localStorage.setItem "datascript-todo/DB" (db->string db)))
 
 (d/listen! conn :persistence
-  (fn [tx-report] ;; FIXME do not notify with nil as db-report
-                  ;; FIXME do not notify if tx-data is empty
-    (when-let [db (:db-after tx-report)]
-      (js/setTimeout #(persist db) 0))))
+           (fn [tx-report] ;; FIXME do not notify with nil as db-report
+             ;; FIXME do not notify if tx-data is empty
+             (when-let [db (:db-after tx-report)]
+               (js/setTimeout #(persist db) 0))))
 
 ;; restoring once persisted DB on page load
 (or

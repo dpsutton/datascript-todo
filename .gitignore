@@ -11,3 +11,6 @@ pom.xml.asc
 /dev/out/*
 /dev/*.js
 .DS_Store
+figwheel_server.log
+.lsp
+resources/public/js

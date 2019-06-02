@@ -62,14 +62,14 @@
         )))
 
 (def fixtures [
-  [:db/add 0 :system/group :all]
+  [:db/add 1 :system/group :all]
   {:db/id -1
    :project/name "datascript"}
   {:db/id -2
    :project/name "nyc-webinar"}
   {:db/id -3
    :project/name "shopping"}
-               
+
   {:todo/text "Displaying list of todos"
    :todo/tags ["listen" "query"]
    :todo/project -2
