@@ -2,22 +2,15 @@
 
 ### Development Build
 
+``` bash
+lein figwheel none
 ```
-lein cljsbuild auto none &
-open index.html
-```
 
-### For LightTable UI
+This should crank up a development build viewable at [http://0.0.0.0:3449](http://0.0.0.0:3449). It includes CIDER middleware so you can connect with CIDER from emacs or your favorite nrepl client.
 
-For inline evaluation of clojurescript within LightTable you must manually
-update LightTable's Clojure plugin to 0.2.0 or later.  As of this writing,
-the plugin version is 0.1.0 and does not update unless, from the LightTable
-UI, you delete the plugin and re-install it.
+### Emacs and CIDER
 
-Build from the command line before using LightTable.
-
-It's important to use `none` to invoke the correct cljsbuild identifier,
-otherwise advanced optimizations will prevent LightTable from finding `goog`
+You can run `lein figwheel none` from the command line or just `m-x cider-jack-in-clojurescript` from emacs and select the repl type as `figwheel`.
 
 ### License
 
