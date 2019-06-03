@@ -58,12 +58,18 @@
 
 ;; Rules are used to implement OR semantic of a filter
 ;; ?term must match either :project/name OR :todo/tags
+
 (def filter-rule
- '[[(match ?todo ?term)
+ '[[(match ?todo ?term-re)
     [?todo :todo/project ?p]
-    [?p :project/name ?term]]
-   [(match ?todo ?term)
-    [?todo :todo/tags ?term]]])
+    [?p :project/name ?term]
+    [(re-find ?term-re ?term)]]
+   [(match ?todo ?term-re)
+    [?todo :todo/tags ?term]
+    [(re-find ?term-re ?term)]]
+   [(match ?todo ?term-re)
+    [?todo :todo/text ?text]
+    [(re-find ?term-re ?text)]]])
 
 ;; terms are passed as a collection to query,
 ;; each term futher interpreted with OR semantic
@@ -72,7 +78,7 @@
          :in $ % [?term ...]
          :where [?e :todo/text]
                 (match ?e ?term)]
-    db filter-rule terms))
+    db filter-rule (mapv re-pattern terms)))
 
 (defn filter-terms [db]
   (not-empty
